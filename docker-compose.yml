@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  api:
+    build: ./backend
+    container_name: techassess-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock  # Access Docker daemon (Windows)
+      - ./backend:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    privileged: true  # Required for Docker-in-Docker on Windows
+    restart: unless-stopped
+    networks:
+      - techassess-network
+
+  # Frontend (Nginx to serve static files)
+  frontend:
+    image: nginx:alpine
+    container_name: techassess-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./styles.css:/usr/share/nginx/html/styles.css:ro
+      - ./script.js:/usr/share/nginx/html/script.js:ro
+    restart: unless-stopped
+    networks:
+      - techassess-network
+
+networks:
+  techassess-network:
+    driver: bridge
