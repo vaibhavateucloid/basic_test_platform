@@ -137,6 +137,456 @@ let userResponses = {
     sql: {}
 };
 
+// ===== SESSION MANAGEMENT =====
+let currentSession = null;
+let sessionId = null;
+let timerInterval = null;
+
+// Extract session ID from URL
+function getSessionIdFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('session');
+}
+
+// Initialize session on page load
+async function initializeSession() {
+    sessionId = getSessionIdFromURL();
+
+    if (!sessionId) {
+        alert('No session found. Redirecting to registration page...');
+        window.location.href = 'landing.html';
+        return;
+    }
+
+    try {
+        // Fetch session info
+        const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}`);
+
+        if (!response.ok) {
+            throw new Error('Invalid session');
+        }
+
+        const result = await response.json();
+        currentSession = result.session;
+
+        // Check session state
+        if (currentSession.state === 'submitted') {
+            alert('This assessment has already been submitted.');
+            showSubmittedMessage();
+            return;
+        }
+
+        if (currentSession.is_expired) {
+            alert('This session has expired.');
+            return;
+        }
+
+        // Display candidate name
+        document.querySelector('.container h1').textContent = `Technical Assessment - ${currentSession.candidate_name}`;
+
+        // Mark session as in_progress if not already
+        if (currentSession.state === 'not_started') {
+            await fetch(`${API_BASE_URL}/api/session/${sessionId}/start`, {
+                method: 'POST'
+            });
+            currentSession.state = 'in_progress';
+        }
+
+        // Start timer
+        startTimer(currentSession.remaining_seconds);
+
+        // Restore progress if any
+        await restoreProgress();
+
+        // Start auto-save
+        startAutoSave();
+
+    } catch (error) {
+        console.error('Session initialization error:', error);
+        alert('Failed to load session. Please check your link or contact support.');
+        window.location.href = 'landing.html';
+    }
+}
+
+// Start countdown timer
+function startTimer(remainingSeconds) {
+    updateTimerDisplay(remainingSeconds);
+
+    timerInterval = setInterval(() => {
+        remainingSeconds--;
+
+        if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            handleTimeExpired();
+        } else {
+            updateTimerDisplay(remainingSeconds);
+
+            // Warning at 10 minutes
+            if (remainingSeconds === 600 && !DEV_MODE) {
+                alert('⚠️ 10 minutes remaining!');
+            }
+        }
+    }, 1000);
+}
+
+// Update timer display
+function updateTimerDisplay(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    // Update or create timer element
+    let timerElement = document.getElementById('exam-timer');
+    if (!timerElement) {
+        timerElement = document.createElement('div');
+        timerElement.id = 'exam-timer';
+        timerElement.className = 'exam-timer';
+        document.body.appendChild(timerElement);
+    }
+
+    timerElement.innerHTML = `
+        <div class="timer-label">Time Remaining</div>
+        <div class="timer-value">${timeString}</div>
+    `;
+
+    // Add warning color when < 10 minutes
+    if (seconds < 600) {
+        timerElement.classList.add('timer-warning');
+    }
+}
+
+// Handle time expired
+function handleTimeExpired() {
+    alert('⏰ Time is up! Your assessment will be submitted automatically.');
+    submitAssessment(); // Auto-submit
+}
+
+// Show submitted message
+function showSubmittedMessage() {
+    document.querySelector('.container').innerHTML = `
+        <div style="text-align: center; padding: 50px;">
+            <h1>Assessment Already Submitted</h1>
+            <p>This assessment has already been completed and submitted.</p>
+            <p>If you believe this is an error, please contact support.</p>
+        </div>
+    `;
+}
+
+// ===== AUTO-SAVE FUNCTIONALITY =====
+let autoSaveInterval = null;
+let lastSaveTime = null;
+
+// Debounce utility function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Save to localStorage (immediate, debounced)
+const autoSaveToLocal = debounce(() => {
+    if (!sessionId) return;
+
+    const progressData = {
+        mcq: userResponses.mcq,
+        python: userResponses.python,
+        sql: userResponses.sql,
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        localStorage.setItem(`session_${sessionId}_progress`, JSON.stringify(progressData));
+        console.log('💾 Auto-save to localStorage:', {
+            mcq: Object.keys(progressData.mcq).length + ' answers',
+            python: Object.keys(progressData.python).length + ' problems',
+            sql: Object.keys(progressData.sql).length + ' queries',
+            timestamp: progressData.timestamp
+        });
+    } catch (error) {
+        console.error('❌ Failed to save to localStorage:', error);
+    }
+}, 500); // 500ms debounce
+
+// Save to backend (periodic)
+async function saveProgressToBackend() {
+    if (!sessionId) return;
+
+    try {
+        showAutoSaveIndicator('Saving...');
+
+        const payload = {
+            mcq: userResponses.mcq,
+            python: userResponses.python,
+            sql: userResponses.sql
+        };
+
+        console.log('📡 Auto-save to backend:', {
+            mcq: Object.keys(payload.mcq).length + ' answers',
+            python: Object.keys(payload.python).length + ' problems',
+            sql: Object.keys(payload.sql).length + ' queries'
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            lastSaveTime = result.saved_at;
+            console.log('✅ Progress saved to server at:', result.saved_at);
+            showAutoSaveIndicator('Saved');
+        } else {
+            console.error('❌ Failed to save progress - Status:', response.status, response.statusText);
+            showAutoSaveIndicator('Failed');
+        }
+    } catch (error) {
+        console.error('❌ Auto-save error:', error);
+        showAutoSaveIndicator('Failed');
+    }
+}
+
+// Restore progress from backend or localStorage
+async function restoreProgress() {
+    if (!sessionId) {
+        console.log('⚠️ No sessionId - skipping progress restoration');
+        return;
+    }
+
+    console.log('🔄 Starting progress restoration for session:', sessionId);
+
+    let backendProgress = null;
+    let localProgress = null;
+
+    // 1. Try backend first
+    try {
+        console.log('📡 Fetching progress from backend...');
+        const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/progress`);
+        if (response.ok) {
+            const result = await response.json();
+            if (result.progress) {
+                backendProgress = result.progress;
+                console.log('✅ Backend progress loaded:', {
+                    mcq: Object.keys(backendProgress.mcq || {}).length + ' answers',
+                    python: Object.keys(backendProgress.python || {}).length + ' problems',
+                    sql: Object.keys(backendProgress.sql || {}).length + ' queries',
+                    timestamp: backendProgress.saved_at
+                });
+            } else {
+                console.log('ℹ️ No progress found in backend');
+            }
+        } else {
+            console.log('⚠️ Backend request failed with status:', response.status);
+        }
+    } catch (error) {
+        console.error('❌ Failed to load backend progress:', error);
+    }
+
+    // 2. Load from localStorage
+    try {
+        console.log('💾 Loading progress from localStorage...');
+        const localData = localStorage.getItem(`session_${sessionId}_progress`);
+        if (localData) {
+            localProgress = JSON.parse(localData);
+            console.log('✅ localStorage progress loaded:', {
+                mcq: Object.keys(localProgress.mcq || {}).length + ' answers',
+                python: Object.keys(localProgress.python || {}).length + ' problems',
+                sql: Object.keys(localProgress.sql || {}).length + ' queries',
+                timestamp: localProgress.timestamp
+            });
+        } else {
+            console.log('ℹ️ No progress found in localStorage');
+        }
+    } catch (error) {
+        console.error('❌ Failed to load localStorage progress:', error);
+    }
+
+    // 3. Select most recent
+    const progressToRestore = selectMostRecent(backendProgress, localProgress);
+
+    if (!progressToRestore) {
+        console.log('ℹ️ No progress to restore - starting fresh');
+        return;
+    }
+
+    const source = (backendProgress && progressToRestore === backendProgress) ? 'backend' : 'localStorage';
+    console.log(`📦 Using progress from: ${source}`);
+
+    // 4. Restore MCQ answers
+    if (progressToRestore.mcq && Object.keys(progressToRestore.mcq).length > 0) {
+        console.log('📝 Restoring MCQ answers...');
+        let mcqRestored = 0;
+        let mcqFailed = 0;
+
+        Object.entries(progressToRestore.mcq).forEach(([qId, answer]) => {
+            userResponses.mcq[parseInt(qId)] = answer;
+            const radio = document.querySelector(`input[name="question${qId}"][value="${answer}"]`);
+            if (radio) {
+                radio.checked = true;
+                mcqRestored++;
+                console.log(`  ✅ MCQ ${qId}: ${answer}`);
+            } else {
+                mcqFailed++;
+                console.warn(`  ⚠️ MCQ ${qId}: Radio button not found for value "${answer}"`);
+            }
+        });
+
+        console.log(`✅ MCQ Restoration: ${mcqRestored} restored, ${mcqFailed} failed`);
+    } else {
+        console.log('ℹ️ No MCQ answers to restore');
+    }
+
+    // 5. Restore Python code
+    if (progressToRestore.python && Object.keys(progressToRestore.python).length > 0) {
+        console.log('💻 Restoring Python code...');
+        let pythonRestored = 0;
+        let pythonFailed = 0;
+
+        Object.entries(progressToRestore.python).forEach(([problemId, code]) => {
+            userResponses.python[problemId] = code;
+            const editorNum = problemId.replace('problem', '');
+            const editor = document.getElementById(`python-code-${editorNum}`);
+            if (editor) {
+                editor.value = code;
+                pythonRestored++;
+                console.log(`  ✅ Python ${problemId}: ${code.length} characters`);
+            } else {
+                pythonFailed++;
+                console.warn(`  ⚠️ Python ${problemId}: Editor not found (python-code-${editorNum})`);
+            }
+        });
+
+        console.log(`✅ Python Restoration: ${pythonRestored} restored, ${pythonFailed} failed`);
+    } else {
+        console.log('ℹ️ No Python code to restore');
+    }
+
+    // 6. Restore SQL answers
+    if (progressToRestore.sql && Object.keys(progressToRestore.sql).length > 0) {
+        console.log('🗃️ Restoring SQL queries...');
+        let sqlRestored = 0;
+        let sqlFailed = 0;
+
+        Object.entries(progressToRestore.sql).forEach(([qId, answer]) => {
+            userResponses.sql[parseInt(qId)] = answer;
+            const input = document.getElementById(`sql-answer-${qId}`);
+            if (input) {
+                input.value = answer;
+                sqlRestored++;
+                console.log(`  ✅ SQL ${qId}: ${answer.length} characters`);
+            } else {
+                sqlFailed++;
+                console.warn(`  ⚠️ SQL ${qId}: Input not found (sql-answer-${qId})`);
+            }
+        });
+
+        console.log(`✅ SQL Restoration: ${sqlRestored} restored, ${sqlFailed} failed`);
+    } else {
+        console.log('ℹ️ No SQL queries to restore');
+    }
+
+    // 7. Show notification
+    console.log('🎉 Progress restoration complete!');
+    showNotification(`Progress restored from ${formatTimestamp(progressToRestore.timestamp || progressToRestore.saved_at)}`);
+}
+
+// Select most recent progress
+function selectMostRecent(backend, local) {
+    if (!backend && !local) return null;
+    if (!backend) return local;
+    if (!local) return backend;
+
+    const backendTime = new Date(backend.saved_at || backend.timestamp);
+    const localTime = new Date(local.timestamp);
+
+    return backendTime > localTime ? backend : local;
+}
+
+// Format timestamp
+function formatTimestamp(isoString) {
+    if (!isoString) return 'unknown time';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString();
+}
+
+// Show notification
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Show auto-save indicator
+function showAutoSaveIndicator(status) {
+    let indicator = document.getElementById('autosave-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autosave-indicator';
+        document.body.appendChild(indicator);
+    }
+
+    indicator.textContent = status;
+    indicator.className = `autosave-indicator ${status.toLowerCase()}`;
+
+    if (status === 'Saved') {
+        setTimeout(() => {
+            indicator.style.opacity = '0';
+        }, 2000);
+    } else {
+        indicator.style.opacity = '1';
+    }
+}
+
+// Start auto-save
+function startAutoSave() {
+    // Save to localStorage on input
+    document.addEventListener('input', autoSaveToLocal);
+    document.addEventListener('change', autoSaveToLocal);
+
+    // Sync to backend every 30 seconds
+    autoSaveInterval = setInterval(() => {
+        saveProgressToBackend();
+    }, 30000); // 30 seconds
+
+    // Save on page unload
+    window.addEventListener('beforeunload', () => {
+        // Use sendBeacon for guaranteed send
+        const data = JSON.stringify({
+            mcq: userResponses.mcq,
+            python: userResponses.python,
+            sql: userResponses.sql
+        });
+        navigator.sendBeacon(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, data);
+    });
+}
+
+// Stop auto-save
+function stopAutoSave() {
+    if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+        autoSaveInterval = null;
+    }
+}
+
 // ===== ANTI-CHEATING MEASURES =====
 let tabSwitchCount = 0;
 let warningShown = false;
@@ -164,9 +614,25 @@ if (!DEV_MODE) {
     });
 }
 
+// Update tab switch count on server
+async function updateTabSwitchCount() {
+    if (sessionId) {
+        try {
+            await fetch(`${API_BASE_URL}/api/session/${sessionId}/update-tab-switches`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ count: tabSwitchCount })
+            });
+        } catch (error) {
+            console.error('Failed to update tab switch count:', error);
+        }
+    }
+}
+
 // Detect tab switching / window blur (track count even in dev mode)
 window.addEventListener('blur', function() {
     tabSwitchCount++;
+    updateTabSwitchCount();
     if (!DEV_MODE && !warningShown) {
         alert('⚠️ WARNING: Tab switching detected!\n\nYou switched away from the assessment. This activity is being monitored.\n\nMultiple violations may result in automatic submission.');
         warningShown = true;
@@ -184,6 +650,7 @@ window.addEventListener('focus', function() {
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
         tabSwitchCount++;
+        updateTabSwitchCount();
         console.log(`Page hidden (tab switch/minimize). Count: ${tabSwitchCount}`);
 
         if (!DEV_MODE && !warningShown) {
@@ -248,8 +715,13 @@ if (!DEV_MODE) {
 }
 
 // Initialize the assessment
-window.onload = function() {
+window.onload = async function() {
+    // Render MCQ questions FIRST so radio buttons exist for restoration
     renderMCQQuestions();
+
+    // Initialize session (validates, starts timer, and restores progress)
+    await initializeSession();
+
     initializeResizablePanes();
     initializeNavigation();
 
@@ -818,8 +1290,8 @@ async function calculateScores() {
         document.getElementById('sql-score').textContent = 'Calculating...';
         document.getElementById('total-score').textContent = 'Calculating...';
 
-        // Send to backend API
-        const response = await fetch(`${API_BASE_URL}/api/submit-assessment`, {
+        // Send to backend API with session ID
+        const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/submit`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -828,8 +1300,6 @@ async function calculateScores() {
                 mcq: userResponses.mcq,
                 python: userResponses.python,
                 sql: userResponses.sql,
-                candidate_name: null,  // Can add name/email fields later
-                candidate_email: null,
                 tab_switch_count: tabSwitchCount
             })
         });

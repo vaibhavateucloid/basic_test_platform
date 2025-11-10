@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Assessment - Registration</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="landing-container">
+        <!-- Header -->
+        <div class="landing-header">
+            <h1>Technical Assessment Platform</h1>
+            <p class="subtitle">Software Engineering Skills Evaluation</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="landing-content">
+            <!-- Exam Information Card -->
+            <div class="info-card">
+                <h2>Exam Overview</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                <path d="M12 6V12H16.5M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Duration
+                        </div>
+                        <div class="info-value">2 Hours</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Total Points</div>
+                        <div class="info-value">25</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Sections</div>
+                        <div class="info-value">3</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Format</div>
+                        <div class="info-value">Online</div>
+                    </div>
+                </div>
+
+                <div class="section-breakdown">
+                    <h3>Assessment Sections</h3>
+                    <div class="section-item">
+                        <span class="section-number">1</span>
+                        <div class="section-details">
+                            <strong>Multiple Choice Questions</strong>
+                            <p>10 questions covering programming fundamentals, data structures, and algorithms</p>
+                            <span class="points-badge">10 points</span>
+                        </div>
+                    </div>
+                    <div class="section-item">
+                        <span class="section-number">2</span>
+                        <div class="section-details">
+                            <strong>Python Coding Challenges</strong>
+                            <p>2 programming problems to test your coding skills</p>
+                            <span class="points-badge">10 points</span>
+                        </div>
+                    </div>
+                    <div class="section-item">
+                        <span class="section-number">3</span>
+                        <div class="section-details">
+                            <strong>SQL Mystery Challenge</strong>
+                            <p>5 SQL queries to solve a data breach mystery</p>
+                            <span class="points-badge">5 points</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions Card -->
+            <div class="info-card">
+                <h2>Important Instructions</h2>
+                <ul class="instructions-list">
+                    <li><strong>Time Limit:</strong> You have 2 hours to complete all sections once you start</li>
+                    <li><strong>Navigation:</strong> You can move between sections freely during the exam</li>
+                    <li><strong>Auto-Save:</strong> Your progress is saved automatically</li>
+                    <li><strong>One Attempt:</strong> Each registration link can only be used once</li>
+                    <li><strong>Code Execution:</strong> Python and SQL code runs in a secure sandbox environment</li>
+                    <li><strong>Browser Tab:</strong> Avoid switching tabs excessively - it's monitored</li>
+                    <li><strong>Submission:</strong> You can submit once you complete all sections</li>
+                </ul>
+            </div>
+
+            <!-- Registration Form Card -->
+            <div class="registration-card">
+                <h2>Register for Assessment</h2>
+                <p class="form-description">Please enter your details to begin the assessment</p>
+
+                <form id="registrationForm" class="registration-form">
+                    <div class="form-group">
+                        <label for="candidateName">Full Name *</label>
+                        <input
+                            type="text"
+                            id="candidateName"
+                            name="candidateName"
+                            required
+                            placeholder="Enter your full name"
+                            autocomplete="name"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="candidateEmail">Email Address *</label>
+                        <input
+                            type="email"
+                            id="candidateEmail"
+                            name="candidateEmail"
+                            required
+                            placeholder="Enter your email address"
+                            autocomplete="email"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="examCode">Exam Code (Optional)</label>
+                        <input
+                            type="text"
+                            id="examCode"
+                            name="examCode"
+                            placeholder="Enter exam code if provided"
+                            autocomplete="off"
+                        >
+                        <small class="form-hint">Leave blank if not applicable</small>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="agreeTerms" required>
+                            <span>I agree to the terms and conditions and confirm that I will complete this assessment independently *</span>
+                        </label>
+                    </div>
+
+                    <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+                    <button type="submit" class="btn btn-primary btn-large" id="startButton">
+                        Start Assessment
+                    </button>
+
+                    <p class="form-footer">
+                        Once you click "Start Assessment", your session will begin and the timer will start counting.
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="landing-footer">
+            <p>&copy; 2024 Technical Assessment Platform. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script src="landing.js"></script>
+</body>
+</html>

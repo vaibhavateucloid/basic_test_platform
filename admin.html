@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Assessment Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: #edf1f2;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .admin-header {
+            background: #fff;
+            padding: 25px 35px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .admin-header h1 {
+            margin: 0 0 10px 0;
+            color: #000000de;
+        }
+
+        .admin-header p {
+            margin: 0;
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .filters {
+            background: #fff;
+            padding: 20px 35px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            border: 2px solid #d0d4d7;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background: #be003c;
+            color: #fff;
+            border-color: #be003c;
+        }
+
+        .filter-btn:hover {
+            border-color: #be003c;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #000000de;
+        }
+
+        .sessions-table {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px 35px;
+            border-bottom: 2px solid #d0d4d7;
+        }
+
+        .table-header h2 {
+            margin: 0;
+            color: #000000de;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #edf1f2;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #d0d4d7;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #edf1f2;
+        }
+
+        td {
+            padding: 18px 20px;
+            color: #000000de;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-not_started {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .status-in_progress {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .status-submitted {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .score-badge {
+            font-weight: 600;
+            color: #be003c;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #be003c;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #be003c;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 35px;
+            border-radius: 12px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #d0d4d7;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #000000de;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: rgba(0, 0, 0, 0.6);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+
+        .close-btn:hover {
+            background: #d0d4d7;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            color: #000000de;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #edf1f2;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.6);
+            width: 180px;
+        }
+
+        .detail-value {
+            color: #000000de;
+            flex: 1;
+        }
+
+        .code-preview {
+            background: #edf1f2;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #d0d4d7;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>Assessment Admin Dashboard</h1>
+            <p>Monitor candidate sessions and review submissions</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <!-- Stats will be populated here -->
+        </div>
+
+        <div class="filters">
+            <span style="font-weight: 600; color: #4a5568;">Filter:</span>
+            <button class="filter-btn active" onclick="filterSessions(null)">All</button>
+            <button class="filter-btn" onclick="filterSessions('not_started')">Not Started</button>
+            <button class="filter-btn" onclick="filterSessions('in_progress')">In Progress</button>
+            <button class="filter-btn" onclick="filterSessions('submitted')">Submitted</button>
+            <button class="filter-btn" style="margin-left: auto; display: flex; align-items: center; gap: 6px;" onclick="refreshData()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16.0228 9.34841H21.0154V9.34663M2.98413 19.6444V14.6517M2.98413 14.6517L7.97677 14.6517M2.98413 14.6517L6.16502 17.8347C7.15555 18.8271 8.41261 19.58 9.86436 19.969C14.2654 21.1483 18.7892 18.5364 19.9685 14.1353M4.03073 9.86484C5.21 5.46374 9.73377 2.85194 14.1349 4.03121C15.5866 4.4202 16.8437 5.17312 17.8342 6.1655L21.0154 9.34663M21.0154 4.3558V9.34663" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+
+        <div class="sessions-table">
+            <div class="table-header">
+                <h2>All Sessions</h2>
+            </div>
+            <div id="tableContainer">
+                <div class="loading">Loading sessions...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for detailed view -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Session Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody">
+                <!-- Details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

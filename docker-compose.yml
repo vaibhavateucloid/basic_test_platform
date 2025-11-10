@@ -45,6 +45,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - sessions-data:/app/data  # Persist sessions database
     environment:
       - PYTHONUNBUFFERED=1
       - DEV_MODE=true  # Set to false for production (uses read-only candidate_user)
@@ -69,14 +70,20 @@ services:
     ports:
       - "3000:80"
     volumes:
-      - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./styles.css:/usr/share/nginx/html/styles.css:ro
+      - ./landing.html:/usr/share/nginx/html/index.html:ro  # Landing page as root
+      - ./landing.html:/usr/share/nginx/html/landing.html:ro
+      - ./landing.js:/usr/share/nginx/html/landing.js:ro
+      - ./test.html:/usr/share/nginx/html/test.html:ro
       - ./script.js:/usr/share/nginx/html/script.js:ro
+      - ./admin.html:/usr/share/nginx/html/admin.html:ro
+      - ./admin.js:/usr/share/nginx/html/admin.js:ro
+      - ./styles.css:/usr/share/nginx/html/styles.css:ro
     networks:
       - techassess-network
 
 volumes:
   mysql-data:
+  sessions-data:  # Persist session database
 
 networks:
   techassess-network:
