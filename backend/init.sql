@@ -79,3 +79,9 @@ INSERT INTO network_traffic (traffic_id, user_id, destination_ip, data_size_mb, 
 (1, 103, '185.220.101.45', 250, '2024-01-15 23:52'),
 (2, 101, '192.168.1.10', 5, '2024-01-15 14:40'),
 (3, 102, '192.168.1.15', 2, '2024-01-15 15:50');
+
+-- Create read-only user for candidates (production mode)
+-- This user can only SELECT from tables, preventing DROP/DELETE operations
+CREATE USER IF NOT EXISTS 'candidate_user'@'%' IDENTIFIED BY 'candidatepass';
+GRANT SELECT ON techassess.* TO 'candidate_user'@'%';
+FLUSH PRIVILEGES;

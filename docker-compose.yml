@@ -47,6 +47,7 @@ services:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - DEV_MODE=true  # Set to false for production (uses read-only candidate_user)
       - PYTHON_EXECUTOR_URL=http://python-executor:8001
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306

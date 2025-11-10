@@ -814,6 +814,7 @@ async function calculateScores() {
     try {
         // Show loading state
         document.getElementById('mcq-score').textContent = 'Calculating...';
+        document.getElementById('python-score').textContent = 'Calculating...';
         document.getElementById('sql-score').textContent = 'Calculating...';
         document.getElementById('total-score').textContent = 'Calculating...';
 
@@ -841,6 +842,7 @@ async function calculateScores() {
 
         // Display results from backend
         document.getElementById('mcq-score').textContent = result.scores.mcq;
+        document.getElementById('python-score').textContent = result.scores.python || '0/10';
         document.getElementById('sql-score').textContent = result.scores.sql;
         document.getElementById('total-score').textContent = result.scores.total;
 
@@ -881,8 +883,9 @@ function calculateScoresLocally() {
     }
 
     document.getElementById('mcq-score').textContent = `${mcqScore}/10`;
+    document.getElementById('python-score').textContent = 'Submitted (not graded offline)';
     document.getElementById('sql-score').textContent = `${sqlScore}/5`;
-    document.getElementById('total-score').textContent = `${mcqScore + sqlScore}/15`;
+    document.getElementById('total-score').textContent = `${mcqScore + sqlScore}/25`;
 
     console.log('Assessment Results (Local):', {
         mcq: mcqScore,
