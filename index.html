@@ -54,11 +54,14 @@
                 <p>Solve 2 programming problems. Write your code in the text boxes provided.</p>
             </div>
 
-            <div class="coding-container">
-                <!-- Problem 1 -->
-                <div class="coding-problem">
-                    <h3>Problem 1: Two Sum</h3>
-                    <div class="problem-description">
+            <!-- Problem 1 -->
+            <div class="three-pane-container" id="python-problem-1">
+                <!-- Left Pane: Question -->
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Problem 1: Two Sum</h3>
+                    </div>
+                    <div class="pane-content">
                         <p><strong>Difficulty:</strong> Easy</p>
                         <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers that add up to <code>target</code>.</p>
                         <p><strong>Example:</strong></p>
@@ -70,16 +73,46 @@ Explanation: nums[0] + nums[1] = 2 + 7 = 9</pre>
                             <li>You may assume that each input has exactly one solution</li>
                             <li>You may not use the same element twice</li>
                         </ul>
+                        <p><strong>Sample Test Case:</strong></p>
+                        <pre>twoSum([2, 7, 11, 15], 9) → [0, 1]</pre>
                     </div>
-                    <textarea class="code-editor" id="python-code-1" placeholder="def twoSum(nums, target):&#10;    # Write your code here&#10;    pass"></textarea>
-                    <button class="btn btn-small btn-run" onclick="runPythonCode(1)">▶ Run Code</button>
-                    <div class="code-output" id="output-1"></div>
                 </div>
 
-                <!-- Problem 2 -->
-                <div class="coding-problem">
-                    <h3>Problem 2: Palindrome Check</h3>
-                    <div class="problem-description">
+                <!-- Vertical Divider -->
+                <div class="vertical-divider" data-container="python-problem-1"></div>
+
+                <!-- Right Container -->
+                <div class="right-container">
+                    <!-- Top Pane: IDE -->
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>Code Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runPythonCode(1)">▶ Run Code</button>
+                        </div>
+                        <textarea class="code-editor" id="python-code-1" placeholder="def twoSum(nums, target):&#10;    # Write your code here&#10;    pass"></textarea>
+                    </div>
+
+                    <!-- Horizontal Divider -->
+                    <div class="horizontal-divider" data-container="python-problem-1"></div>
+
+                    <!-- Bottom Pane: Test Results -->
+                    <div class="bottom-pane">
+                        <div class="pane-header">Test Results</div>
+                        <div class="test-results-container" id="test-results-1">
+                            <p class="placeholder-text">Run your code to see test results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Problem 2 -->
+            <div class="three-pane-container" id="python-problem-2" style="margin-top: 30px;">
+                <!-- Left Pane: Question -->
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Problem 2: Palindrome Check</h3>
+                    </div>
+                    <div class="pane-content">
                         <p><strong>Difficulty:</strong> Easy</p>
                         <p>Write a function that checks if a given string is a palindrome (reads the same backward as forward). Ignore spaces and case.</p>
                         <p><strong>Example:</strong></p>
@@ -93,10 +126,35 @@ Output: False</pre>
                             <li>The string contains only alphanumeric characters and spaces</li>
                             <li>Case should be ignored</li>
                         </ul>
+                        <p><strong>Sample Test Case:</strong></p>
+                        <pre>isPalindrome("A man a plan a canal Panama") → True</pre>
                     </div>
-                    <textarea class="code-editor" id="python-code-2" placeholder="def isPalindrome(s):&#10;    # Write your code here&#10;    pass"></textarea>
-                    <button class="btn btn-small btn-run" onclick="runPythonCode(2)">▶ Run Code</button>
-                    <div class="code-output" id="output-2"></div>
+                </div>
+
+                <!-- Vertical Divider -->
+                <div class="vertical-divider" data-container="python-problem-2"></div>
+
+                <!-- Right Container -->
+                <div class="right-container">
+                    <!-- Top Pane: IDE -->
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>Code Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runPythonCode(2)">▶ Run Code</button>
+                        </div>
+                        <textarea class="code-editor" id="python-code-2" placeholder="def isPalindrome(s):&#10;    # Write your code here&#10;    pass"></textarea>
+                    </div>
+
+                    <!-- Horizontal Divider -->
+                    <div class="horizontal-divider" data-container="python-problem-2"></div>
+
+                    <!-- Bottom Pane: Test Results -->
+                    <div class="bottom-pane">
+                        <div class="pane-header">Test Results</div>
+                        <div class="test-results-container" id="test-results-2">
+                            <p class="placeholder-text">Run your code to see test results</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -227,69 +285,246 @@ Output: False</pre>
                 </div>
             </div>
 
-            <div class="sql-container">
-                <!-- SQL Question 1 -->
-                <div class="sql-question">
-                    <h3>Question 1: Find the Incident</h3>
-                    <p>Query the <code>security_logs</code> table to find all access attempts on January 15, 2024. What time did the suspicious activity occur?</p>
-                    <textarea class="sql-editor" id="sql-query-1" placeholder="SELECT * FROM security_logs WHERE ..."></textarea>
-                    <button class="btn btn-small" onclick="runSQLQuery(1)">Run Query</button>
-                    <div class="query-result" id="result-1"></div>
-                    <div class="answer-input">
-                        <label>Your Answer (time in HH:MM format):</label>
-                        <input type="text" id="sql-answer-1" placeholder="e.g., 23:45">
+            <!-- SQL Question 1 -->
+            <div class="three-pane-container" id="sql-question-1">
+                <!-- Left Pane: Question and Schema -->
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Question 1: Find the Incident</h3>
+                    </div>
+                    <div class="pane-content">
+                        <p>Query the <code>security_logs</code> table to find all access attempts on January 15, 2024. What time did the suspicious activity occur?</p>
+                        <div class="schema-reference">
+                            <h4>📋 Table: security_logs</h4>
+                            <table>
+                                <tr><th>Column</th><th>Type</th></tr>
+                                <tr><td>log_id</td><td>INT</td></tr>
+                                <tr><td>user_id</td><td>INT</td></tr>
+                                <tr><td>access_time</td><td>VARCHAR</td></tr>
+                                <tr><td>date</td><td>VARCHAR</td></tr>
+                                <tr><td>action</td><td>VARCHAR</td></tr>
+                            </table>
+                        </div>
+                        <div class="answer-input">
+                            <label>Your Answer (time in HH:MM format):</label>
+                            <input type="text" id="sql-answer-1" placeholder="e.g., 23:45">
+                        </div>
                     </div>
                 </div>
 
-                <!-- SQL Question 2 -->
-                <div class="sql-question">
-                    <h3>Question 2: Identify the User</h3>
-                    <p>Find which employee was logged in during the suspicious activity. Query the <code>employees</code> table using the user_id from the security logs.</p>
-                    <textarea class="sql-editor" id="sql-query-2" placeholder="SELECT * FROM employees WHERE ..."></textarea>
-                    <button class="btn btn-small" onclick="runSQLQuery(2)">Run Query</button>
-                    <div class="query-result" id="result-2"></div>
-                    <div class="answer-input">
-                        <label>Your Answer (employee name):</label>
-                        <input type="text" id="sql-answer-2" placeholder="e.g., John Doe">
+                <!-- Vertical Divider -->
+                <div class="vertical-divider" data-container="sql-question-1"></div>
+
+                <!-- Right Container -->
+                <div class="right-container">
+                    <!-- Top Pane: SQL Editor -->
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>SQL Query Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runSQLQuery(1)">▶ Run Query</button>
+                        </div>
+                        <textarea class="sql-editor" id="sql-query-1" placeholder="SELECT * FROM security_logs WHERE ..."></textarea>
+                    </div>
+
+                    <!-- Horizontal Divider -->
+                    <div class="horizontal-divider" data-container="sql-question-1"></div>
+
+                    <!-- Bottom Pane: Query Results -->
+                    <div class="bottom-pane">
+                        <div class="pane-header">Query Results</div>
+                        <div class="sql-results-container" id="sql-result-1">
+                            <p class="placeholder-text">Run your query to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Question 2 -->
+            <div class="three-pane-container" id="sql-question-2" style="margin-top: 30px;">
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Question 2: Identify the User</h3>
+                    </div>
+                    <div class="pane-content">
+                        <p>Find which employee was logged in during the suspicious activity. Query the <code>employees</code> table using the user_id from the security logs.</p>
+                        <div class="schema-reference">
+                            <h4>📋 Table: employees</h4>
+                            <table>
+                                <tr><th>Column</th><th>Type</th></tr>
+                                <tr><td>user_id</td><td>INT</td></tr>
+                                <tr><td>name</td><td>VARCHAR</td></tr>
+                                <tr><td>department</td><td>VARCHAR</td></tr>
+                                <tr><td>position</td><td>VARCHAR</td></tr>
+                            </table>
+                        </div>
+                        <div class="answer-input">
+                            <label>Your Answer (employee name):</label>
+                            <input type="text" id="sql-answer-2" placeholder="e.g., John Doe">
+                        </div>
                     </div>
                 </div>
 
-                <!-- SQL Question 3 -->
-                <div class="sql-question">
-                    <h3>Question 3: What Was Accessed?</h3>
-                    <p>Find out what tables were accessed during the breach. Query the <code>access_history</code> table.</p>
-                    <textarea class="sql-editor" id="sql-query-3" placeholder="SELECT * FROM access_history WHERE ..."></textarea>
-                    <button class="btn btn-small" onclick="runSQLQuery(3)">Run Query</button>
-                    <div class="query-result" id="result-3"></div>
-                    <div class="answer-input">
-                        <label>Your Answer (comma-separated table names):</label>
-                        <input type="text" id="sql-answer-3" placeholder="e.g., customers, payments">
+                <div class="vertical-divider" data-container="sql-question-2"></div>
+
+                <div class="right-container">
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>SQL Query Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runSQLQuery(2)">▶ Run Query</button>
+                        </div>
+                        <textarea class="sql-editor" id="sql-query-2" placeholder="SELECT * FROM employees WHERE ..."></textarea>
+                    </div>
+
+                    <div class="horizontal-divider" data-container="sql-question-2"></div>
+
+                    <div class="bottom-pane">
+                        <div class="pane-header">Query Results</div>
+                        <div class="sql-results-container" id="sql-result-2">
+                            <p class="placeholder-text">Run your query to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Question 3 -->
+            <div class="three-pane-container" id="sql-question-3" style="margin-top: 30px;">
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Question 3: What Was Accessed?</h3>
+                    </div>
+                    <div class="pane-content">
+                        <p>Find out what tables were accessed during the breach. Query the <code>access_history</code> table.</p>
+                        <div class="schema-reference">
+                            <h4>📋 Table: access_history</h4>
+                            <table>
+                                <tr><th>Column</th><th>Type</th></tr>
+                                <tr><td>access_id</td><td>INT</td></tr>
+                                <tr><td>user_id</td><td>INT</td></tr>
+                                <tr><td>table_name</td><td>VARCHAR</td></tr>
+                                <tr><td>date</td><td>VARCHAR</td></tr>
+                                <tr><td>time</td><td>VARCHAR</td></tr>
+                            </table>
+                        </div>
+                        <div class="answer-input">
+                            <label>Your Answer (comma-separated table names):</label>
+                            <input type="text" id="sql-answer-3" placeholder="e.g., customers, payments">
+                        </div>
                     </div>
                 </div>
 
-                <!-- SQL Question 4 -->
-                <div class="sql-question">
-                    <h3>Question 4: Find the Motive</h3>
-                    <p>Check the <code>employee_records</code> table. Was the suspect recently terminated or facing disciplinary action?</p>
-                    <textarea class="sql-editor" id="sql-query-4" placeholder="SELECT * FROM employee_records WHERE ..."></textarea>
-                    <button class="btn btn-small" onclick="runSQLQuery(4)">Run Query</button>
-                    <div class="query-result" id="result-4"></div>
-                    <div class="answer-input">
-                        <label>Your Answer (Yes/No):</label>
-                        <input type="text" id="sql-answer-4" placeholder="Yes or No">
+                <div class="vertical-divider" data-container="sql-question-3"></div>
+
+                <div class="right-container">
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>SQL Query Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runSQLQuery(3)">▶ Run Query</button>
+                        </div>
+                        <textarea class="sql-editor" id="sql-query-3" placeholder="SELECT * FROM access_history WHERE ..."></textarea>
+                    </div>
+
+                    <div class="horizontal-divider" data-container="sql-question-3"></div>
+
+                    <div class="bottom-pane">
+                        <div class="pane-header">Query Results</div>
+                        <div class="sql-results-container" id="sql-result-3">
+                            <p class="placeholder-text">Run your query to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Question 4 -->
+            <div class="three-pane-container" id="sql-question-4" style="margin-top: 30px;">
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Question 4: Find the Motive</h3>
+                    </div>
+                    <div class="pane-content">
+                        <p>Check the <code>employee_records</code> table. Was the suspect recently terminated or facing disciplinary action?</p>
+                        <div class="schema-reference">
+                            <h4>📋 Table: employee_records</h4>
+                            <table>
+                                <tr><th>Column</th><th>Type</th></tr>
+                                <tr><td>user_id</td><td>INT</td></tr>
+                                <tr><td>status</td><td>VARCHAR</td></tr>
+                                <tr><td>disciplinary_action</td><td>VARCHAR</td></tr>
+                                <tr><td>termination_date</td><td>VARCHAR</td></tr>
+                            </table>
+                        </div>
+                        <div class="answer-input">
+                            <label>Your Answer (Yes/No):</label>
+                            <input type="text" id="sql-answer-4" placeholder="Yes or No">
+                        </div>
                     </div>
                 </div>
 
-                <!-- SQL Question 5 -->
-                <div class="sql-question">
-                    <h3>Question 5: Track the Data</h3>
-                    <p>Find where the stolen data was sent. Query the <code>network_traffic</code> table to find the destination IP address.</p>
-                    <textarea class="sql-editor" id="sql-query-5" placeholder="SELECT * FROM network_traffic WHERE ..."></textarea>
-                    <button class="btn btn-small" onclick="runSQLQuery(5)">Run Query</button>
-                    <div class="query-result" id="result-5"></div>
-                    <div class="answer-input">
-                        <label>Your Answer (IP address):</label>
-                        <input type="text" id="sql-answer-5" placeholder="e.g., 192.168.1.1">
+                <div class="vertical-divider" data-container="sql-question-4"></div>
+
+                <div class="right-container">
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>SQL Query Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runSQLQuery(4)">▶ Run Query</button>
+                        </div>
+                        <textarea class="sql-editor" id="sql-query-4" placeholder="SELECT * FROM employee_records WHERE ..."></textarea>
+                    </div>
+
+                    <div class="horizontal-divider" data-container="sql-question-4"></div>
+
+                    <div class="bottom-pane">
+                        <div class="pane-header">Query Results</div>
+                        <div class="sql-results-container" id="sql-result-4">
+                            <p class="placeholder-text">Run your query to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Question 5 -->
+            <div class="three-pane-container" id="sql-question-5" style="margin-top: 30px;">
+                <div class="left-pane">
+                    <div class="pane-header">
+                        <h3>Question 5: Track the Data</h3>
+                    </div>
+                    <div class="pane-content">
+                        <p>Find where the stolen data was sent. Query the <code>network_traffic</code> table to find the destination IP address.</p>
+                        <div class="schema-reference">
+                            <h4>📋 Table: network_traffic</h4>
+                            <table>
+                                <tr><th>Column</th><th>Type</th></tr>
+                                <tr><td>traffic_id</td><td>INT</td></tr>
+                                <tr><td>user_id</td><td>INT</td></tr>
+                                <tr><td>destination_ip</td><td>VARCHAR</td></tr>
+                                <tr><td>data_size_mb</td><td>INT</td></tr>
+                                <tr><td>timestamp</td><td>VARCHAR</td></tr>
+                            </table>
+                        </div>
+                        <div class="answer-input">
+                            <label>Your Answer (IP address):</label>
+                            <input type="text" id="sql-answer-5" placeholder="e.g., 192.168.1.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vertical-divider" data-container="sql-question-5"></div>
+
+                <div class="right-container">
+                    <div class="top-pane">
+                        <div class="pane-header">
+                            <span>SQL Query Editor</span>
+                            <button class="btn btn-small btn-run" onclick="runSQLQuery(5)">▶ Run Query</button>
+                        </div>
+                        <textarea class="sql-editor" id="sql-query-5" placeholder="SELECT * FROM network_traffic WHERE ..."></textarea>
+                    </div>
+
+                    <div class="horizontal-divider" data-container="sql-question-5"></div>
+
+                    <div class="bottom-pane">
+                        <div class="pane-header">Query Results</div>
+                        <div class="sql-results-container" id="sql-result-5">
+                            <p class="placeholder-text">Run your query to see results</p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,6 +1,42 @@
-version: '3.8'
-
 services:
+  # Python Code Executor
+  python-executor:
+    build: ./python_executor
+    container_name: techassess-python-executor
+    ports:
+      - "8001:8001"
+    networks:
+      - techassess-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: techassess-mysql
+    ports:
+      - "3307:3306"  # Changed to 3307 to avoid conflict with local MySQL
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: techassess
+      MYSQL_USER: techuser
+      MYSQL_PASSWORD: techpass
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - techassess-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
   # FastAPI Backend
   api:
     build: ./backend
@@ -8,13 +44,20 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - //var/run/docker.sock:/var/run/docker.sock  # Access Docker daemon (Windows)
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    privileged: true  # Required for Docker-in-Docker on Windows
-    restart: unless-stopped
+      - PYTHON_EXECUTOR_URL=http://python-executor:8001
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=techuser
+      - MYSQL_PASSWORD=techpass
+      - MYSQL_DATABASE=techassess
+    depends_on:
+      mysql:
+        condition: service_healthy
+      python-executor:
+        condition: service_healthy
     networks:
       - techassess-network
 
@@ -28,9 +71,11 @@ services:
       - ./index.html:/usr/share/nginx/html/index.html:ro
       - ./styles.css:/usr/share/nginx/html/styles.css:ro
       - ./script.js:/usr/share/nginx/html/script.js:ro
-    restart: unless-stopped
     networks:
       - techassess-network
+
+volumes:
+  mysql-data:
 
 networks:
   techassess-network:

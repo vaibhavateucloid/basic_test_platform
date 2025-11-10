@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Optional
-import docker
+from typing import Dict, Optional, List
 import json
 import time
+import pymysql
+import os
+import httpx
 
 app = FastAPI(title="TechAssess API")
 
@@ -17,18 +19,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Docker client
-try:
-    docker_client = docker.from_env()
-except Exception as e:
-    print(f"Warning: Docker not available: {e}")
-    docker_client = None
+# Python Executor Service URL
+PYTHON_EXECUTOR_URL = os.getenv('PYTHON_EXECUTOR_URL', 'http://localhost:8001')
+
+# MySQL connection configuration
+MYSQL_CONFIG = {
+    'port': int(os.getenv('MYSQL_PORT', 3306)),
+    'user': os.getenv('MYSQL_USER', 'techuser'),
+    'password': os.getenv('MYSQL_PASSWORD', 'techpass'),
+    'database': os.getenv('MYSQL_DATABASE', 'techassess'),
+}
+
+def get_mysql_connection():
+    """Create and return a MySQL connection with retry logic"""
+    # Try multiple hosts: Docker service name, localhost, 127.0.0.1
+    hosts_to_try = [
+        os.getenv('MYSQL_HOST', 'mysql'),  # Docker service name
+        'localhost',                        # Local development
+        '127.0.0.1',                       # Explicit localhost IP
+        'mysql',                           # Fallback to Docker name
+    ]
+
+    last_error = None
+
+    for host in hosts_to_try:
+        try:
+            print(f"Attempting MySQL connection to {host}:{MYSQL_CONFIG['port']}...")
+            connection = pymysql.connect(
+                host=host,
+                port=MYSQL_CONFIG['port'],
+                user=MYSQL_CONFIG['user'],
+                password=MYSQL_CONFIG['password'],
+                database=MYSQL_CONFIG['database'],
+                cursorclass=pymysql.cursors.DictCursor,
+                connect_timeout=5
+            )
+            print(f"✓ MySQL connected successfully to {host}:{MYSQL_CONFIG['port']}")
+            return connection
+        except Exception as e:
+            last_error = e
+            print(f"✗ Failed to connect to {host}:{MYSQL_CONFIG['port']} - {e}")
+            continue
+
+    print(f"✗ All MySQL connection attempts failed. Last error: {last_error}")
+    return None
 
 
 # Request models
 class PythonCodeRequest(BaseModel):
     code: str
     test_cases: Optional[list] = None
+
+
+class SQLQueryRequest(BaseModel):
+    query: str
 
 
 class AssessmentSubmission(BaseModel):
@@ -57,56 +101,76 @@ async def root():
 # Health check
 @app.get("/health")
 async def health_check():
-    docker_status = "connected" if docker_client else "disconnected"
+    # Check MySQL connection
+    mysql_status = "disconnected"
+    try:
+        conn = get_mysql_connection()
+        if conn:
+            conn.close()
+            mysql_status = "connected"
+    except:
+        pass
+
+    # Check Python Executor
+    executor_status = "disconnected"
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{PYTHON_EXECUTOR_URL}/health", timeout=2.0)
+            if response.status_code == 200:
+                executor_status = "connected"
+    except:
+        pass
+
     return {
         "status": "healthy",
-        "docker": docker_status
+        "mysql": mysql_status,
+        "python_executor": executor_status
     }
 
 
-# Execute Python code in Docker sandbox
+# Execute Python code via executor service
 @app.post("/api/execute-python")
 async def execute_python(request: PythonCodeRequest):
-    if not docker_client:
-        raise HTTPException(status_code=503, detail="Docker service unavailable")
-
     try:
-        # Prepare the code
-        code = request.code
+        # Call the Python executor service
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{PYTHON_EXECUTOR_URL}/execute",
+                json={
+                    "code": request.code,
+                    "test_cases": request.test_cases
+                },
+                timeout=30.0  # 30 second timeout for code execution
+            )
 
-        # Create a temporary container to run the code
-        container = docker_client.containers.run(
-            "python:3.11-alpine",
-            command=["python", "-c", code],
-            mem_limit="128m",  # Memory limit
-            cpu_period=100000,
-            cpu_quota=50000,   # 50% CPU
-            network_disabled=True,  # No network access
-            remove=True,
-            detach=False,
-            stdout=True,
-            stderr=True
-        )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Executor service error: {response.text}"
+                )
 
-        output = container.decode('utf-8')
-
-        return {
-            "success": True,
-            "output": output,
-            "error": None
-        }
-
-    except docker.errors.ContainerError as e:
+    except httpx.TimeoutException:
         return {
             "success": False,
             "output": None,
-            "error": e.stderr.decode('utf-8') if e.stderr else str(e)
+            "error": "Code execution timeout exceeded",
+            "test_mode": False
+        }
+    except httpx.RequestError as e:
+        return {
+            "success": False,
+            "output": None,
+            "error": f"Failed to connect to Python executor service: {str(e)}",
+            "test_mode": False
         }
     except Exception as e:
         return {
             "success": False,
             "output": None,
-            "error": str(e)
+            "error": str(e),
+            "test_mode": False
         }
 
 
@@ -187,66 +251,64 @@ async def submit_assessment(submission: AssessmentSubmission):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Test Python code with test cases
-@app.post("/api/test-python")
-async def test_python(request: PythonCodeRequest):
+# Legacy endpoint removed - now using /api/execute-python with test_cases
+
+
+# Execute SQL query in MySQL
+@app.post("/api/execute-sql")
+async def execute_sql(request: SQLQueryRequest):
     """
-    Run Python code against test cases
+    Execute SQL query in MySQL database and return results
     """
-    if not docker_client:
-        raise HTTPException(status_code=503, detail="Docker service unavailable")
+    connection = None
+    try:
+        # Get MySQL connection
+        connection = get_mysql_connection()
+        if not connection:
+            raise HTTPException(status_code=503, detail="MySQL database unavailable")
 
-    test_cases = request.test_cases or []
-    results = []
+        query = request.query.strip()
 
-    for test_case in test_cases:
-        test_code = f"""
-{request.code}
+        # Basic SQL injection protection - only allow SELECT statements
+        if not query.lower().startswith('select'):
+            return {
+                "success": False,
+                "error": "Only SELECT queries are allowed for security reasons",
+                "results": [],
+                "row_count": 0
+            }
 
-# Test case
-{test_case.get('test', '')}
-"""
-        try:
-            container = docker_client.containers.run(
-                "python:3.11-alpine",
-                command=["python", "-c", test_code],
-                mem_limit="128m",
-                cpu_period=100000,
-                cpu_quota=50000,
-                network_disabled=True,
-                remove=True,
-                detach=False,
-                stdout=True,
-                stderr=True
-            )
+        # Execute query
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            results = cursor.fetchall()
+            row_count = len(results)
 
-            output = container.decode('utf-8').strip()
-            expected = str(test_case.get('expected', '')).strip()
+        return {
+            "success": True,
+            "error": None,
+            "results": results,
+            "row_count": row_count,
+            "message": f"Query executed successfully. {row_count} row(s) returned."
+        }
 
-            results.append({
-                "passed": output == expected,
-                "expected": expected,
-                "actual": output,
-                "test": test_case.get('name', 'Test')
-            })
-
-        except Exception as e:
-            results.append({
-                "passed": False,
-                "expected": test_case.get('expected', ''),
-                "actual": None,
-                "error": str(e),
-                "test": test_case.get('name', 'Test')
-            })
-
-    passed = sum(1 for r in results if r.get('passed', False))
-
-    return {
-        "total_tests": len(results),
-        "passed": passed,
-        "failed": len(results) - passed,
-        "results": results
-    }
+    except pymysql.Error as e:
+        return {
+            "success": False,
+            "error": f"SQL Error: {str(e)}",
+            "results": [],
+            "row_count": 0
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error: {str(e)}",
+            "results": [],
+            "row_count": 0
+        }
+    finally:
+        if connection:
+            connection.close()
 
 
 if __name__ == "__main__":
