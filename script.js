@@ -1,6 +1,6 @@
 // ===== CONFIGURATION =====
-// API Configuration
-const API_BASE_URL = 'http://localhost:8000';
+// API Configuration - dynamically set based on current host
+const API_BASE_URL = `http://${window.location.hostname}:8000`;
 
 // Developer Mode - Set to true to disable anti-cheating restrictions
 const DEV_MODE = true;  // Set to false for production

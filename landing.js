@@ -1,5 +1,5 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:8000';
+// API Base URL - dynamically set based on current host
+const API_BASE_URL = `http://${window.location.hostname}:8000`;
 
 // Form submission handler
 document.getElementById('registrationForm').addEventListener('submit', async function(e) {
