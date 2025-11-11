@@ -134,7 +134,8 @@ const sqlAnswers = {
 let userResponses = {
     mcq: {},
     python: {},
-    sql: {}
+    sql: {},
+    sqlQueries: {}  // Store SQL query editor contents
 };
 
 // ===== SESSION MANAGEMENT =====
@@ -299,6 +300,7 @@ const autoSaveToLocal = debounce(() => {
         mcq: userResponses.mcq,
         python: userResponses.python,
         sql: userResponses.sql,
+        sqlQueries: userResponses.sqlQueries,
         timestamp: new Date().toISOString()
     };
 
@@ -307,7 +309,8 @@ const autoSaveToLocal = debounce(() => {
         console.log('💾 Auto-save to localStorage:', {
             mcq: Object.keys(progressData.mcq).length + ' answers',
             python: Object.keys(progressData.python).length + ' problems',
-            sql: Object.keys(progressData.sql).length + ' queries',
+            sql: Object.keys(progressData.sql).length + ' answers',
+            sqlQueries: Object.keys(progressData.sqlQueries).length + ' queries',
             timestamp: progressData.timestamp
         });
     } catch (error) {
@@ -325,13 +328,15 @@ async function saveProgressToBackend() {
         const payload = {
             mcq: userResponses.mcq,
             python: userResponses.python,
-            sql: userResponses.sql
+            sql: userResponses.sql,
+            sqlQueries: userResponses.sqlQueries
         };
 
         console.log('📡 Auto-save to backend:', {
             mcq: Object.keys(payload.mcq).length + ' answers',
             python: Object.keys(payload.python).length + ' problems',
-            sql: Object.keys(payload.sql).length + ' queries'
+            sql: Object.keys(payload.sql).length + ' answers',
+            sqlQueries: Object.keys(payload.sqlQueries).length + ' queries'
         });
 
         const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, {
@@ -378,7 +383,8 @@ async function restoreProgress() {
                 console.log('✅ Backend progress loaded:', {
                     mcq: Object.keys(backendProgress.mcq || {}).length + ' answers',
                     python: Object.keys(backendProgress.python || {}).length + ' problems',
-                    sql: Object.keys(backendProgress.sql || {}).length + ' queries',
+                    sql: Object.keys(backendProgress.sql || {}).length + ' answers',
+                    sqlQueries: Object.keys(backendProgress.sqlQueries || {}).length + ' queries',
                     timestamp: backendProgress.saved_at
                 });
             } else {
@@ -400,7 +406,8 @@ async function restoreProgress() {
             console.log('✅ localStorage progress loaded:', {
                 mcq: Object.keys(localProgress.mcq || {}).length + ' answers',
                 python: Object.keys(localProgress.python || {}).length + ' problems',
-                sql: Object.keys(localProgress.sql || {}).length + ' queries',
+                sql: Object.keys(localProgress.sql || {}).length + ' answers',
+                sqlQueries: Object.keys(localProgress.sqlQueries || {}).length + ' queries',
                 timestamp: localProgress.timestamp
             });
         } else {
@@ -489,12 +496,36 @@ async function restoreProgress() {
             }
         });
 
-        console.log(`✅ SQL Restoration: ${sqlRestored} restored, ${sqlFailed} failed`);
+        console.log(`✅ SQL Answers Restoration: ${sqlRestored} restored, ${sqlFailed} failed`);
     } else {
-        console.log('ℹ️ No SQL queries to restore');
+        console.log('ℹ️ No SQL answers to restore');
     }
 
-    // 7. Show notification
+    // 7. Restore SQL query editors
+    if (progressToRestore.sqlQueries && Object.keys(progressToRestore.sqlQueries).length > 0) {
+        console.log('🔍 Restoring SQL query editors...');
+        let sqlQueriesRestored = 0;
+        let sqlQueriesFailed = 0;
+
+        Object.entries(progressToRestore.sqlQueries).forEach(([queryId, query]) => {
+            userResponses.sqlQueries[parseInt(queryId)] = query;
+            const queryEditor = document.getElementById(`sql-query-${queryId}`);
+            if (queryEditor) {
+                queryEditor.value = query;
+                sqlQueriesRestored++;
+                console.log(`  ✅ SQL query ${queryId}: ${query.length} characters`);
+            } else {
+                sqlQueriesFailed++;
+                console.warn(`  ⚠️ SQL query ${queryId}: Editor not found (sql-query-${queryId})`);
+            }
+        });
+
+        console.log(`✅ SQL Query Editors Restoration: ${sqlQueriesRestored} restored, ${sqlQueriesFailed} failed`);
+    } else {
+        console.log('ℹ️ No SQL query editors to restore');
+    }
+
+    // 8. Show notification
     console.log('🎉 Progress restoration complete!');
     showNotification(`Progress restored from ${formatTimestamp(progressToRestore.timestamp || progressToRestore.saved_at)}`);
 }
@@ -562,10 +593,10 @@ function startAutoSave() {
     document.addEventListener('input', autoSaveToLocal);
     document.addEventListener('change', autoSaveToLocal);
 
-    // Sync to backend every 30 seconds
+    // Sync to backend every 10 seconds (reduced from 30s for better reliability)
     autoSaveInterval = setInterval(() => {
         saveProgressToBackend();
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds
 
     // Save on page unload
     window.addEventListener('beforeunload', () => {
@@ -573,9 +604,11 @@ function startAutoSave() {
         const data = JSON.stringify({
             mcq: userResponses.mcq,
             python: userResponses.python,
-            sql: userResponses.sql
+            sql: userResponses.sql,
+            sqlQueries: userResponses.sqlQueries
         });
         navigator.sendBeacon(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, data);
+        console.log('📤 Sending data via beacon on page unload');
     });
 }
 
@@ -586,6 +619,192 @@ function stopAutoSave() {
         autoSaveInterval = null;
     }
 }
+
+// ===== REAL-TIME RESPONSE CAPTURE =====
+// Initialize event listeners to capture Python and SQL responses as user types
+function initializeRealtimeCapture() {
+    // Capture MCQ selections in real-time
+    console.log('🔍 Setting up MCQ real-time capture...');
+    let mcqRadiosFound = 0;
+
+    // Attach change listeners to all MCQ radio buttons
+    mcqQuestions.forEach(q => {
+        const radios = document.querySelectorAll(`input[name="question${q.id}"]`);
+        if (radios.length > 0) {
+            mcqRadiosFound += radios.length;
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        userResponses.mcq[q.id] = parseInt(this.value);
+                        console.log(`📝 MCQ question ${q.id} answered: option ${this.value}`);
+                    }
+                });
+            });
+        }
+    });
+    console.log(`✅ MCQ radio buttons found: ${mcqRadiosFound}/${mcqQuestions.length * 4}`);
+
+    // Capture Python code in real-time
+    // Python problems: python-code-1, python-code-2
+    const pythonEditor1 = document.getElementById('python-code-1');
+    const pythonEditor2 = document.getElementById('python-code-2');
+
+    if (pythonEditor1) {
+        pythonEditor1.addEventListener('input', function() {
+            userResponses.python['problem1'] = this.value;
+            console.log('📝 Python problem1 updated:', this.value.length, 'characters');
+        });
+    }
+
+    if (pythonEditor2) {
+        pythonEditor2.addEventListener('input', function() {
+            userResponses.python['problem2'] = this.value;
+            console.log('📝 Python problem2 updated:', this.value.length, 'characters');
+        });
+    }
+
+    // Capture SQL Query Editors in real-time
+    // SQL query editors: sql-query-1 through sql-query-5
+    console.log('🔍 Checking for SQL query editor fields...');
+    let sqlQueryEditorsFound = 0;
+    for (let i = 1; i <= 5; i++) {
+        const sqlQueryEditor = document.getElementById(`sql-query-${i}`);
+        console.log(`  Looking for sql-query-${i}:`, sqlQueryEditor ? 'FOUND' : 'NOT FOUND');
+        if (sqlQueryEditor) {
+            sqlQueryEditorsFound++;
+            sqlQueryEditor.addEventListener('input', function() {
+                userResponses.sqlQueries[i] = this.value;
+                console.log(`📝 SQL query ${i} updated:`, this.value.length, 'characters');
+            });
+        }
+    }
+    console.log(`✅ SQL query editors found: ${sqlQueryEditorsFound}/5`);
+
+    // Capture SQL answers in real-time
+    // SQL questions: sql-answer-1 through sql-answer-5
+    console.log('🔍 Checking for SQL input fields...');
+    let sqlInputsFound = 0;
+
+    // Helper function to attach listener with proper closure
+    function attachSQLListener(inputElement, questionNumber) {
+        console.log(`  🔧 Attaching listener to SQL answer ${questionNumber}`);
+        const handler = function(event) {
+            console.log(`📝 [EVENT FIRED] SQL answer ${questionNumber} - Event type: ${event.type}, Value: "${this.value}" (${this.value.length} characters)`);
+            userResponses.sql[questionNumber] = this.value;
+        };
+        inputElement.addEventListener('input', handler);
+        inputElement.addEventListener('change', handler);  // Also listen to change events
+        console.log(`  ✅ Listener attached to SQL answer ${questionNumber}`);
+    }
+
+    for (let i = 1; i <= 5; i++) {
+        const sqlInput = document.getElementById(`sql-answer-${i}`);
+        console.log(`  Looking for sql-answer-${i}:`, sqlInput ? 'FOUND' : 'NOT FOUND');
+        if (sqlInput) {
+            sqlInputsFound++;
+            // Log the element details
+            console.log(`    Element details:`, {
+                id: sqlInput.id,
+                type: sqlInput.type,
+                disabled: sqlInput.disabled,
+                readOnly: sqlInput.readOnly,
+                value: sqlInput.value
+            });
+            attachSQLListener(sqlInput, i);
+        }
+    }
+    console.log(`✅ SQL inputs found: ${sqlInputsFound}/5`);
+
+    // Fallback: Use event delegation at document level for MCQ, SQL inputs and query editors
+    document.addEventListener('input', function(event) {
+        const target = event.target;
+        if (target && target.id) {
+            // Handle SQL answer inputs
+            if (target.id.startsWith('sql-answer-')) {
+                const questionNum = parseInt(target.id.replace('sql-answer-', ''));
+                if (questionNum >= 1 && questionNum <= 5) {
+                    console.log(`📝 [FALLBACK DELEGATION] SQL answer ${questionNum} updated: "${target.value}" (${target.value.length} characters)`);
+                    userResponses.sql[questionNum] = target.value;
+                }
+            }
+            // Handle SQL query editors
+            else if (target.id.startsWith('sql-query-')) {
+                const queryNum = parseInt(target.id.replace('sql-query-', ''));
+                if (queryNum >= 1 && queryNum <= 5) {
+                    console.log(`📝 [FALLBACK DELEGATION] SQL query ${queryNum} updated: (${target.value.length} characters)`);
+                    userResponses.sqlQueries[queryNum] = target.value;
+                }
+            }
+        }
+    }, true); // Use capture phase
+
+    // Fallback: Use event delegation for MCQ radio buttons (change event)
+    document.addEventListener('change', function(event) {
+        const target = event.target;
+        if (target && target.type === 'radio' && target.name && target.name.startsWith('question')) {
+            const questionId = parseInt(target.name.replace('question', ''));
+            if (!isNaN(questionId) && target.checked) {
+                console.log(`📝 [FALLBACK DELEGATION] MCQ question ${questionId} answered: option ${target.value}`);
+                userResponses.mcq[questionId] = parseInt(target.value);
+            }
+        }
+    }, true); // Use capture phase
+
+    console.log('✅ Real-time response capture initialized (with delegation fallback)');
+    console.log('📊 Current userResponses state:', {
+        mcq: Object.keys(userResponses.mcq).length + ' answers',
+        python: Object.keys(userResponses.python).length + ' problems',
+        sql: Object.keys(userResponses.sql).length + ' answers',
+        sqlQueries: Object.keys(userResponses.sqlQueries).length + ' queries'
+    });
+}
+
+// Debug functions - accessible from browser console
+window.debugResponses = function() {
+    console.log('🔍 DEBUG: Current userResponses:');
+    console.log('MCQ:', userResponses.mcq);
+    console.log('Python:', userResponses.python);
+    console.log('SQL Answers:', userResponses.sql);
+    console.log('SQL Queries:', userResponses.sqlQueries);
+    return userResponses;
+};
+
+window.testSQLInputs = function() {
+    console.log('🧪 TESTING SQL INPUTS:');
+    for (let i = 1; i <= 5; i++) {
+        const input = document.getElementById(`sql-answer-${i}`);
+        if (input) {
+            console.log(`sql-answer-${i}:`, {
+                exists: true,
+                value: input.value,
+                disabled: input.disabled,
+                readOnly: input.readOnly,
+                type: input.type,
+                hasInputListener: 'Check if input event fires below...'
+            });
+            // Try to trigger input event manually
+            input.value = 'TEST_' + i;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            console.log(`sql-answer-${i}: NOT FOUND`);
+        }
+    }
+    console.log('After manual test, userResponses.sql:', userResponses.sql);
+};
+
+window.testMCQCapture = function() {
+    console.log('🧪 TESTING MCQ CAPTURE:');
+    console.log('Current MCQ responses:', userResponses.mcq);
+    mcqQuestions.forEach(q => {
+        const radios = document.querySelectorAll(`input[name="question${q.id}"]`);
+        const checked = document.querySelector(`input[name="question${q.id}"]:checked`);
+        console.log(`Question ${q.id}:`, {
+            totalOptions: radios.length,
+            selected: checked ? `Option ${checked.value}` : 'None',
+            inMemory: userResponses.mcq[q.id] !== undefined ? `Option ${userResponses.mcq[q.id]}` : 'Not captured'
+        });
+    });
+};
 
 // ===== ANTI-CHEATING MEASURES =====
 let tabSwitchCount = 0;
@@ -724,6 +943,9 @@ window.onload = async function() {
 
     initializeResizablePanes();
     initializeNavigation();
+
+    // Initialize real-time response capture for Python and SQL
+    initializeRealtimeCapture();
 
     // Add dev mode badge if in developer mode
     if (DEV_MODE) {
