@@ -134,8 +134,10 @@ const sqlAnswers = {
 let userResponses = {
     mcq: {},
     python: {},
+    pythonResults: {},      // Store Python test execution results
     sql: {},
-    sqlQueries: {}  // Store SQL query editor contents
+    sqlQueries: {},         // Store SQL query editor contents
+    sqlQueryResults: {}     // Store SQL query execution results
 };
 
 // ===== SESSION MANAGEMENT =====
@@ -299,8 +301,10 @@ const autoSaveToLocal = debounce(() => {
     const progressData = {
         mcq: userResponses.mcq,
         python: userResponses.python,
+        pythonResults: userResponses.pythonResults,
         sql: userResponses.sql,
         sqlQueries: userResponses.sqlQueries,
+        sqlQueryResults: userResponses.sqlQueryResults,
         timestamp: new Date().toISOString()
     };
 
@@ -309,8 +313,10 @@ const autoSaveToLocal = debounce(() => {
         console.log('💾 Auto-save to localStorage:', {
             mcq: Object.keys(progressData.mcq).length + ' answers',
             python: Object.keys(progressData.python).length + ' problems',
+            pythonResults: Object.keys(progressData.pythonResults).length + ' results',
             sql: Object.keys(progressData.sql).length + ' answers',
             sqlQueries: Object.keys(progressData.sqlQueries).length + ' queries',
+            sqlQueryResults: Object.keys(progressData.sqlQueryResults).length + ' results',
             timestamp: progressData.timestamp
         });
     } catch (error) {
@@ -328,15 +334,19 @@ async function saveProgressToBackend() {
         const payload = {
             mcq: userResponses.mcq,
             python: userResponses.python,
+            pythonResults: userResponses.pythonResults,
             sql: userResponses.sql,
-            sqlQueries: userResponses.sqlQueries
+            sqlQueries: userResponses.sqlQueries,
+            sqlQueryResults: userResponses.sqlQueryResults
         };
 
         console.log('📡 Auto-save to backend:', {
             mcq: Object.keys(payload.mcq).length + ' answers',
             python: Object.keys(payload.python).length + ' problems',
+            pythonResults: Object.keys(payload.pythonResults).length + ' results',
             sql: Object.keys(payload.sql).length + ' answers',
-            sqlQueries: Object.keys(payload.sqlQueries).length + ' queries'
+            sqlQueries: Object.keys(payload.sqlQueries).length + ' queries',
+            sqlQueryResults: Object.keys(payload.sqlQueryResults).length + ' results'
         });
 
         const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, {
@@ -383,8 +393,10 @@ async function restoreProgress() {
                 console.log('✅ Backend progress loaded:', {
                     mcq: Object.keys(backendProgress.mcq || {}).length + ' answers',
                     python: Object.keys(backendProgress.python || {}).length + ' problems',
+                    pythonResults: Object.keys(backendProgress.pythonResults || {}).length + ' results',
                     sql: Object.keys(backendProgress.sql || {}).length + ' answers',
                     sqlQueries: Object.keys(backendProgress.sqlQueries || {}).length + ' queries',
+                    sqlQueryResults: Object.keys(backendProgress.sqlQueryResults || {}).length + ' results',
                     timestamp: backendProgress.saved_at
                 });
             } else {
@@ -406,8 +418,10 @@ async function restoreProgress() {
             console.log('✅ localStorage progress loaded:', {
                 mcq: Object.keys(localProgress.mcq || {}).length + ' answers',
                 python: Object.keys(localProgress.python || {}).length + ' problems',
+                pythonResults: Object.keys(localProgress.pythonResults || {}).length + ' results',
                 sql: Object.keys(localProgress.sql || {}).length + ' answers',
                 sqlQueries: Object.keys(localProgress.sqlQueries || {}).length + ' queries',
+                sqlQueryResults: Object.keys(localProgress.sqlQueryResults || {}).length + ' results',
                 timestamp: localProgress.timestamp
             });
         } else {
@@ -525,7 +539,78 @@ async function restoreProgress() {
         console.log('ℹ️ No SQL query editors to restore');
     }
 
-    // 8. Show notification
+    // 8. Restore Python test results
+    if (progressToRestore.pythonResults && Object.keys(progressToRestore.pythonResults).length > 0) {
+        console.log('🧪 Restoring Python test results...');
+        let pythonResultsRestored = 0;
+        let pythonResultsFailed = 0;
+
+        Object.entries(progressToRestore.pythonResults).forEach(([problemNum, result]) => {
+            userResponses.pythonResults[parseInt(problemNum)] = result;
+            const resultsDiv = document.getElementById(`test-results-${problemNum}`);
+            if (resultsDiv) {
+                if (result.success && result.test_mode) {
+                    displayTestResults(resultsDiv, result);
+                    pythonResultsRestored++;
+                    console.log(`  ✅ Python result ${problemNum}: ${result.passed}/${result.total_tests} tests passed`);
+                } else if (!result.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="sql-result-info error">
+                            <strong>✗ Error:</strong><br>
+                            ${result.error || 'Unknown error'}
+                        </div>
+                    `;
+                    pythonResultsRestored++;
+                    console.log(`  ✅ Python result ${problemNum}: Error state restored`);
+                }
+            } else {
+                pythonResultsFailed++;
+                console.warn(`  ⚠️ Python result ${problemNum}: Results div not found (test-results-${problemNum})`);
+            }
+        });
+
+        console.log(`✅ Python Results Restoration: ${pythonResultsRestored} restored, ${pythonResultsFailed} failed`);
+    } else {
+        console.log('ℹ️ No Python test results to restore');
+    }
+
+    // 9. Restore SQL query results
+    if (progressToRestore.sqlQueryResults && Object.keys(progressToRestore.sqlQueryResults).length > 0) {
+        console.log('📊 Restoring SQL query results...');
+        let sqlResultsRestored = 0;
+        let sqlResultsFailed = 0;
+
+        Object.entries(progressToRestore.sqlQueryResults).forEach(([queryNum, result]) => {
+            userResponses.sqlQueryResults[parseInt(queryNum)] = result;
+            const resultDiv = document.getElementById(`sql-result-${queryNum}`);
+            if (resultDiv) {
+                if (result.success) {
+                    displaySQLResults(resultDiv, result);
+                    sqlResultsRestored++;
+                    const rowInfo = result.truncated ? `${result.originalRowCount} rows (showing first 100)` : `${result.row_count} rows`;
+                    console.log(`  ✅ SQL result ${queryNum}: ${rowInfo}`);
+                } else if (!result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="sql-result-info error">
+                            <strong>✗ Error:</strong><br>
+                            ${result.error || 'Unknown error'}
+                        </div>
+                    `;
+                    sqlResultsRestored++;
+                    console.log(`  ✅ SQL result ${queryNum}: Error state restored`);
+                }
+            } else {
+                sqlResultsFailed++;
+                console.warn(`  ⚠️ SQL result ${queryNum}: Result div not found (sql-result-${queryNum})`);
+            }
+        });
+
+        console.log(`✅ SQL Query Results Restoration: ${sqlResultsRestored} restored, ${sqlResultsFailed} failed`);
+    } else {
+        console.log('ℹ️ No SQL query results to restore');
+    }
+
+    // 10. Show notification
     console.log('🎉 Progress restoration complete!');
     showNotification(`Progress restored from ${formatTimestamp(progressToRestore.timestamp || progressToRestore.saved_at)}`);
 }
@@ -604,8 +689,10 @@ function startAutoSave() {
         const data = JSON.stringify({
             mcq: userResponses.mcq,
             python: userResponses.python,
+            pythonResults: userResponses.pythonResults,
             sql: userResponses.sql,
-            sqlQueries: userResponses.sqlQueries
+            sqlQueries: userResponses.sqlQueries,
+            sqlQueryResults: userResponses.sqlQueryResults
         });
         navigator.sendBeacon(`${API_BASE_URL}/api/session/${sessionId}/save-progress`, data);
         console.log('📤 Sending data via beacon on page unload');
@@ -754,8 +841,10 @@ function initializeRealtimeCapture() {
     console.log('📊 Current userResponses state:', {
         mcq: Object.keys(userResponses.mcq).length + ' answers',
         python: Object.keys(userResponses.python).length + ' problems',
+        pythonResults: Object.keys(userResponses.pythonResults).length + ' results',
         sql: Object.keys(userResponses.sql).length + ' answers',
-        sqlQueries: Object.keys(userResponses.sqlQueries).length + ' queries'
+        sqlQueries: Object.keys(userResponses.sqlQueries).length + ' queries',
+        sqlQueryResults: Object.keys(userResponses.sqlQueryResults).length + ' results'
     });
 }
 
@@ -763,9 +852,11 @@ function initializeRealtimeCapture() {
 window.debugResponses = function() {
     console.log('🔍 DEBUG: Current userResponses:');
     console.log('MCQ:', userResponses.mcq);
-    console.log('Python:', userResponses.python);
+    console.log('Python Code:', userResponses.python);
+    console.log('Python Results:', userResponses.pythonResults);
     console.log('SQL Answers:', userResponses.sql);
     console.log('SQL Queries:', userResponses.sqlQueries);
+    console.log('SQL Query Results:', userResponses.sqlQueryResults);
     return userResponses;
 };
 
@@ -1265,6 +1356,10 @@ async function runPythonCode(problemNum) {
 
         const result = await response.json();
 
+        // Save result to userResponses for auto-save
+        userResponses.pythonResults[problemNum] = result;
+        console.log(`💾 Saved Python result for problem ${problemNum}`);
+
         // Display results
         if (result.success && result.test_mode) {
             displayTestResults(resultsDiv, result);
@@ -1279,6 +1374,12 @@ async function runPythonCode(problemNum) {
 
     } catch (error) {
         console.error('Error executing code:', error);
+        const errorResult = {
+            success: false,
+            error: 'Connection Error: Could not connect to backend server'
+        };
+        userResponses.pythonResults[problemNum] = errorResult;
+
         resultsDiv.innerHTML = `
             <div class="sql-result-info error">
                 <strong>✗ Connection Error:</strong><br>
@@ -1408,6 +1509,18 @@ async function runSQLQuery(questionNum) {
 
         const result = await response.json();
 
+        // Limit SQL results to 100 rows for storage (keep full results for display)
+        const resultToSave = { ...result };
+        if (result.results && result.results.length > 100) {
+            resultToSave.results = result.results.slice(0, 100);
+            resultToSave.truncated = true;
+            resultToSave.originalRowCount = result.results.length;
+        }
+
+        // Save result to userResponses for auto-save
+        userResponses.sqlQueryResults[questionNum] = resultToSave;
+        console.log(`💾 Saved SQL query result for question ${questionNum}`);
+
         // Display results
         if (result.success) {
             displaySQLResults(resultDiv, result);
@@ -1422,6 +1535,12 @@ async function runSQLQuery(questionNum) {
 
     } catch (error) {
         console.error('Error executing SQL:', error);
+        const errorResult = {
+            success: false,
+            error: 'Connection Error: Could not connect to backend server'
+        };
+        userResponses.sqlQueryResults[questionNum] = errorResult;
+
         resultDiv.innerHTML = `
             <div class="sql-result-info error">
                 <strong>✗ Connection Error:</strong><br>
