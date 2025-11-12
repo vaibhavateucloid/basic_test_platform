@@ -294,8 +294,8 @@ function debounce(func, wait) {
     };
 }
 
-// Save to localStorage (immediate, debounced)
-const autoSaveToLocal = debounce(() => {
+// Save to localStorage (immediate - not debounced)
+function saveToLocalStorage() {
     if (!sessionId) return;
 
     const progressData = {
@@ -322,7 +322,10 @@ const autoSaveToLocal = debounce(() => {
     } catch (error) {
         console.error('❌ Failed to save to localStorage:', error);
     }
-}, 500); // 500ms debounce
+}
+
+// Debounced version for input changes (to avoid too many saves)
+const autoSaveToLocal = debounce(saveToLocalStorage, 500);
 
 // Save to backend (periodic)
 async function saveProgressToBackend() {
@@ -623,6 +626,11 @@ function selectMostRecent(backend, local) {
 
     const backendTime = new Date(backend.saved_at || backend.timestamp);
     const localTime = new Date(local.timestamp);
+
+    console.log('🔍 Comparing timestamps:');
+    console.log('  Backend:', backend.saved_at || backend.timestamp, '→', backendTime);
+    console.log('  Local:', local.timestamp, '→', localTime);
+    console.log('  Backend > Local?', backendTime > localTime);
 
     return backendTime > localTime ? backend : local;
 }
@@ -1360,6 +1368,9 @@ async function runPythonCode(problemNum) {
         userResponses.pythonResults[problemNum] = result;
         console.log(`💾 Saved Python result for problem ${problemNum}`);
 
+        // Trigger IMMEDIATE save to localStorage (no debounce)
+        saveToLocalStorage();
+
         // Display results
         if (result.success && result.test_mode) {
             displayTestResults(resultsDiv, result);
@@ -1379,6 +1390,9 @@ async function runPythonCode(problemNum) {
             error: 'Connection Error: Could not connect to backend server'
         };
         userResponses.pythonResults[problemNum] = errorResult;
+
+        // Trigger IMMEDIATE save to localStorage (no debounce)
+        saveToLocalStorage();
 
         resultsDiv.innerHTML = `
             <div class="sql-result-info error">
@@ -1521,6 +1535,9 @@ async function runSQLQuery(questionNum) {
         userResponses.sqlQueryResults[questionNum] = resultToSave;
         console.log(`💾 Saved SQL query result for question ${questionNum}`);
 
+        // Trigger IMMEDIATE save to localStorage (no debounce)
+        saveToLocalStorage();
+
         // Display results
         if (result.success) {
             displaySQLResults(resultDiv, result);
@@ -1540,6 +1557,9 @@ async function runSQLQuery(questionNum) {
             error: 'Connection Error: Could not connect to backend server'
         };
         userResponses.sqlQueryResults[questionNum] = errorResult;
+
+        // Trigger IMMEDIATE save to localStorage (no debounce)
+        saveToLocalStorage();
 
         resultDiv.innerHTML = `
             <div class="sql-result-info error">

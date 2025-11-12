@@ -58,6 +58,9 @@ def init_database():
             mcq_answers TEXT,
             python_code TEXT,
             sql_answers TEXT,
+            python_results TEXT,
+            sql_queries TEXT,
+            sql_query_results TEXT,
             saved_at TEXT NOT NULL,
             FOREIGN KEY (session_id) REFERENCES sessions(session_id)
         )
@@ -67,6 +70,22 @@ def init_database():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_session_state ON sessions(state)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_session_email ON sessions(candidate_email)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_progress_saved ON session_progress(saved_at)')
+
+    # Migration: Add new columns to existing session_progress table if they don't exist
+    cursor.execute("PRAGMA table_info(session_progress)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if 'python_results' not in columns:
+        cursor.execute('ALTER TABLE session_progress ADD COLUMN python_results TEXT')
+        print("✓ Added python_results column to session_progress table")
+
+    if 'sql_queries' not in columns:
+        cursor.execute('ALTER TABLE session_progress ADD COLUMN sql_queries TEXT')
+        print("✓ Added sql_queries column to session_progress table")
+
+    if 'sql_query_results' not in columns:
+        cursor.execute('ALTER TABLE session_progress ADD COLUMN sql_query_results TEXT')
+        print("✓ Added sql_query_results column to session_progress table")
 
     conn.commit()
     conn.close()
@@ -268,7 +287,8 @@ def get_session_with_submission(session_id: str) -> Optional[Dict]:
     return session
 
 
-def save_progress(session_id: str, mcq_answers: dict, python_code: dict, sql_answers: dict) -> bool:
+def save_progress(session_id: str, mcq_answers: dict, python_code: dict, sql_answers: dict,
+                  python_results: dict = None, sql_queries: dict = None, sql_query_results: dict = None) -> bool:
     """
     Save or update progress for a session (auto-save)
     Uses REPLACE to upsert (insert or update if exists)
@@ -278,13 +298,17 @@ def save_progress(session_id: str, mcq_answers: dict, python_code: dict, sql_ans
 
     try:
         cursor.execute('''
-            REPLACE INTO session_progress (session_id, mcq_answers, python_code, sql_answers, saved_at)
-            VALUES (?, ?, ?, ?, ?)
+            REPLACE INTO session_progress (session_id, mcq_answers, python_code, sql_answers,
+                                          python_results, sql_queries, sql_query_results, saved_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             session_id,
             json.dumps(mcq_answers),
             json.dumps(python_code),
             json.dumps(sql_answers),
+            json.dumps(python_results) if python_results else None,
+            json.dumps(sql_queries) if sql_queries else None,
+            json.dumps(sql_query_results) if sql_query_results else None,
             datetime.now().isoformat()
         ))
 
@@ -313,6 +337,9 @@ def get_progress(session_id: str) -> Optional[Dict]:
         progress['mcq_answers'] = json.loads(progress['mcq_answers']) if progress['mcq_answers'] else {}
         progress['python_code'] = json.loads(progress['python_code']) if progress['python_code'] else {}
         progress['sql_answers'] = json.loads(progress['sql_answers']) if progress['sql_answers'] else {}
+        progress['python_results'] = json.loads(progress['python_results']) if progress.get('python_results') else {}
+        progress['sql_queries'] = json.loads(progress['sql_queries']) if progress.get('sql_queries') else {}
+        progress['sql_query_results'] = json.loads(progress['sql_query_results']) if progress.get('sql_query_results') else {}
         return progress
     return None
 

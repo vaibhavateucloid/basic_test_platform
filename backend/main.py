@@ -559,8 +559,18 @@ async def save_session_progress(session_id: str, data: dict):
         mcq_answers = data.get('mcq', {})
         python_code = data.get('python', {})
         sql_answers = data.get('sql', {})
+        python_results = data.get('pythonResults', {})
+        sql_queries = data.get('sqlQueries', {})
+        sql_query_results = data.get('sqlQueryResults', {})
 
-        success = database.save_progress(session_id, mcq_answers, python_code, sql_answers)
+        # Debug logging
+        print(f"📥 Received save-progress data:")
+        print(f"   pythonResults: {len(python_results)} items - {list(python_results.keys())}")
+        print(f"   sqlQueries: {len(sql_queries)} items - {list(sql_queries.keys())}")
+        print(f"   sqlQueryResults: {len(sql_query_results)} items - {list(sql_query_results.keys())}")
+
+        success = database.save_progress(session_id, mcq_answers, python_code, sql_answers,
+                                        python_results, sql_queries, sql_query_results)
 
         if success:
             return {
@@ -600,6 +610,9 @@ async def get_session_progress(session_id: str):
                     "mcq": progress['mcq_answers'],
                     "python": progress['python_code'],
                     "sql": progress['sql_answers'],
+                    "pythonResults": progress.get('python_results', {}),
+                    "sqlQueries": progress.get('sql_queries', {}),
+                    "sqlQueryResults": progress.get('sql_query_results', {}),
                     "saved_at": progress['saved_at']
                 }
             }
